@@ -1,24 +1,32 @@
 // netlify/functions/token.js
 exports.handler = async (event) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-
+  // CORS 预检
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: '' };
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+      body: ''
+    };
   }
 
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: corsHeaders, body: 'Method Not Allowed' };
+    return { statusCode: 405, headers: { 'Access-Control-Allow-Origin': '*' }, body: 'Method Not Allowed' };
   }
 
   let body;
   try {
+    body = JSON
     body = JSON.parse(event.body);
   } catch (e) {
-    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON' }) };
+    return {
+      statusCode: 400,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ error: 'Invalid JSON' })
+    };
   }
 
   const { code, code_verifier, client_id, redirect_uri } = body;
@@ -27,8 +35,11 @@ exports.handler = async (event) => {
   if (!code || !code_verifier || !client_id || !client_secret || !redirect_uri) {
     return {
       statusCode: 400,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'Missing required fields' })
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({
+        error: 'Missing required fields',
+        received: { code: !!code, code_verifier: !!code_verifier, client_id: !!client_id, redirect_uri: !!redirect_uri, has_secret: !!client_secret }
+      })
     };
   }
 
@@ -37,7 +48,7 @@ exports.handler = async (event) => {
     client_secret,
     code,
     code_verifier,
-    redirect_uri  // 使用前端传来的
+    redirect_uri
   });
 
   try {
@@ -46,7 +57,7 @@ exports.handler = async (event) => {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
-        'User-Agent': 'GitHub-OAuth'
+        'User-Agent': 'OAuth-App'
       },
       body: params
     });
@@ -55,10 +66,17 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(data)
     };
   } catch (e) {
-    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: e.message }) };
+    return {
+      statusCode: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ error: e.message })
+    };
   }
 };
